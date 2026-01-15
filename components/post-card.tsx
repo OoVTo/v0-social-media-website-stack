@@ -20,13 +20,57 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
   const [replyText, setReplyText] = useState("")
   const [showShareModal, setShowShareModal] = useState(false)
   const [shareText, setShareText] = useState("")
+  const [sharedPost, setSharedPost] = useState<any>(null)
+  const [isLiking, setIsLiking] = useState(false)
   const supabase = createClient()
   const isOwnPost = post.user_id === currentUser?.id
 
   useEffect(() => {
     // Check if user has liked this post
     checkIfLiked()
-  }, [post.id, currentUser?.id])
+    
+    // Fetch shared post if this is a quote post
+    if (post.shared_post_id) {
+      fetchSharedPost()
+    }
+  }, [post.id, currentUser?.id, post.shared_post_id])
+
+  const checkIfLiked = async () => {
+    if (!currentUser?.id) return
+    try {
+      const { data } = await supabase
+        .from("likes")
+        .select("id")
+        .eq("post_id", post.id)
+        .eq("user_id", currentUser.id)
+        .single()
+
+      setIsLiked(!!data)
+    } catch {
+      setIsLiked(false)
+    }
+  }
+
+  const fetchSharedPost = async () => {
+    try {
+      const { data } = await supabase
+        .from("posts")
+        .select(
+          `
+          *,
+          users:user_id (id, username, profile_picture_url)
+        `,
+        )
+        .eq("id", post.shared_post_id)
+        .single()
+
+      if (data) {
+        setSharedPost(data)
+      }
+    } catch (error) {
+      console.error("Error fetching shared post:", error)
+    }
+  }
 
   const checkIfLiked = async () => {
     if (!currentUser?.id) return
@@ -70,22 +114,43 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
   }
 
   const handleLike = async () => {
+    if (isLiking) return // Prevent multiple simultaneous requests
+    
     try {
-      if (isLiked) {
-        const { error } = await supabase.from("likes").delete().eq("post_id", post.id).eq("user_id", currentUser.id)
-        if (!error) {
-          setIsLiked(false)
-          setLikeCount(Math.max(0, likeCount - 1))
-        }
-      } else {
-        const { error } = await supabase.from("likes").insert([{ post_id: post.id, user_id: currentUser.id }])
+      setIsLiking(true)
+      const newIsLiked = !isLiked
+      
+      if (newIsLiked) {
+        // Add like
+        const { error } = await supabase.from("likes").insert([
+          { post_id: post.id, user_id: currentUser.id }
+        ])
+        
         if (!error) {
           setIsLiked(true)
           setLikeCount(likeCount + 1)
+        } else {
+          console.error("Error adding like:", error)
+        }
+      } else {
+        // Remove like
+        const { error } = await supabase
+          .from("likes")
+          .delete()
+          .eq("post_id", post.id)
+          .eq("user_id", currentUser.id)
+        
+        if (!error) {
+          setIsLiked(false)
+          setLikeCount(Math.max(0, likeCount - 1))
+        } else {
+          console.error("Error removing like:", error)
         }
       }
     } catch (error) {
       console.error("Error toggling like:", error)
+    } finally {
+      setIsLiking(false)
     }
   }
 
@@ -218,6 +283,38 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
               </div>
             )}
 
+            {/* Shared Post */}
+            {sharedPost && (
+              <div
+                onClick={() => window.location.href = `/home`}
+                className="mt-3 p-3 border border-border rounded-lg bg-muted/30 hover:bg-muted/50 transition cursor-pointer"
+              >
+                <div className="flex gap-2 items-start">
+                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 text-xs">
+                    {sharedPost.users?.username?.[0]?.toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <Link href={`/profile/${sharedPost.user_id}`} className="font-semibold text-sm hover:underline">
+                        {sharedPost.users?.username}
+                      </Link>
+                      <span className="text-muted-foreground text-xs">@{sharedPost.users?.username}</span>
+                    </div>
+                    <p className="text-sm text-foreground mt-1 line-clamp-3">{sharedPost.content}</p>
+                    {sharedPost.media_urls && sharedPost.media_urls.length > 0 && (
+                      <div className="mt-2 rounded overflow-hidden bg-muted">
+                        <img
+                          src={sharedPost.media_urls[0] || "/placeholder.svg"}
+                          alt="Shared post media"
+                          className="w-full h-20 object-cover"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Engagement Buttons */}
             <div className="mt-3 flex justify-between text-muted-foreground text-sm max-w-xs">
               <button
@@ -243,9 +340,18 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
 
               <button
                 onClick={handleLike}
-                className={`flex items-center gap-2 transition ${isLiked ? "text-destructive" : "hover:text-primary"}`}
+                disabled={isLiking}
+                className={`flex items-center gap-2 transition ${
+                  isLiked
+                    ? "text-destructive hover:text-destructive/80"
+                    : "text-muted-foreground hover:text-destructive"
+                } disabled:opacity-50`}
               >
-                <Heart size={16} fill={isLiked ? "currentColor" : "none"} />
+                <Heart
+                  size={16}
+                  fill={isLiked ? "currentColor" : "none"}
+                  className={isLiked ? "animate-pulse" : ""}
+                />
                 <span>{likeCount}</span>
               </button>
             </div>
