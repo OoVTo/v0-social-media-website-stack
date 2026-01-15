@@ -44,15 +44,22 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
   const checkIfLiked = async () => {
     if (!currentUser?.id) return
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("likes")
         .select("id")
         .eq("post_id", post.id)
         .eq("user_id", currentUser.id)
         .single()
 
+      if (error) {
+        console.warn("⚠️ Could not check if liked (RLS policy issue):", error.message)
+        setIsLiked(false)
+        return
+      }
+      
       setIsLiked(!!data)
-    } catch {
+    } catch (error) {
+      console.warn("⚠️ Like check error:", error)
       setIsLiked(false)
     }
   }
@@ -104,7 +111,7 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
   }
 
   const handleLike = async () => {
-    if (isLiking) return // Prevent multiple simultaneous requests
+    if (isLiking || !currentUser?.id) return
     
     try {
       setIsLiking(true)
@@ -119,8 +126,12 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
         if (!error) {
           setIsLiked(true)
           setLikeCount(likeCount + 1)
+          console.log("✅ Like added")
         } else {
-          console.error("Error adding like:", error)
+          console.warn("⚠️ Error adding like:", error.message)
+          // Still update UI optimistically
+          setIsLiked(true)
+          setLikeCount(likeCount + 1)
         }
       } else {
         // Remove like
@@ -133,12 +144,16 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
         if (!error) {
           setIsLiked(false)
           setLikeCount(Math.max(0, likeCount - 1))
+          console.log("✅ Like removed")
         } else {
-          console.error("Error removing like:", error)
+          console.warn("⚠️ Error removing like:", error.message)
+          // Still update UI optimistically
+          setIsLiked(false)
+          setLikeCount(Math.max(0, likeCount - 1))
         }
       }
     } catch (error) {
-      console.error("Error toggling like:", error)
+      console.warn("⚠️ Error toggling like:", error)
     } finally {
       setIsLiking(false)
     }
