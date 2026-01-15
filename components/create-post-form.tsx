@@ -31,6 +31,7 @@ export default function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
 
   const handleMediaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
+    console.log("📁 Files selected:", files.length, files.map(f => f.name))
     setMedia([...media, ...files])
 
     // Create previews
@@ -89,6 +90,7 @@ export default function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
       }
 
       // Create post (with or without media)
+      console.log("💾 Saving post with media_urls:", mediaUrls)
       const { error: insertError } = await supabase.from("posts").insert([
         {
           user_id: user.id,
@@ -99,6 +101,7 @@ export default function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
 
       if (insertError) throw insertError
 
+      console.log("✅ Post created successfully!")
       setContent("")
       setMedia([])
       setPreview([])
