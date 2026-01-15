@@ -67,6 +67,7 @@ export default function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
 
     try {
       const mediaUrls: string[] = []
+      const uploadWarnings: string[] = []
 
       // Upload media files
       for (const file of media) {
@@ -75,11 +76,18 @@ export default function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
         if ("url" in result) {
           mediaUrls.push(result.url)
         } else {
-          throw new Error(result.error || "Failed to upload media")
+          // Log warning but don't fail the post
+          console.warn("Failed to upload media:", result.error)
+          uploadWarnings.push(file.name)
         }
       }
 
-      // Create post
+      // Show warning if some media failed to upload
+      if (uploadWarnings.length > 0) {
+        console.warn(`Failed to upload ${uploadWarnings.length} file(s). Post will be created without these images.`)
+      }
+
+      // Create post (with or without media)
       const { error: insertError } = await supabase.from("posts").insert([
         {
           user_id: user.id,
