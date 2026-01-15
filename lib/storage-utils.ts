@@ -21,4 +21,5 @@ export async function uploadFile(file: File, path: string): Promise<{ url: strin
         error: "Image upload is not configured. To enable image uploads, configure Vercel Blob storage with BLOB_READ_WRITE_TOKEN.",
       }
     }
-    return { error: error.message || "Failed to upload file" }
+    return { error: error.message || "Failed to upload file" }  }
+}
