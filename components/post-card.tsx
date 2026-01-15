@@ -22,6 +22,7 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
   const [shareText, setShareText] = useState("")
   const [sharedPost, setSharedPost] = useState<any>(null)
   const [isLiking, setIsLiking] = useState(false)
+  const [mediaList, setMediaList] = useState<any[]>([])
   const supabase = createClient()
   const isOwnPost = post.user_id === currentUser?.id
 
@@ -33,7 +34,30 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
     if (post.shared_post_id) {
       fetchSharedPost()
     }
+    
+    // Fetch media for this post
+    fetchMedia()
   }, [post.id, currentUser?.id, post.shared_post_id])
+
+  const fetchMedia = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("media_uploads")
+        .select("*")
+        .eq("post_id", post.id)
+        .order("created_at", { ascending: true })
+
+      if (!error && data) {
+        setMediaList(data)
+        console.log("✅ Fetched", data.length, "media files")
+      } else {
+        setMediaList([])
+      }
+    } catch (error) {
+      console.error("Error fetching media:", error)
+      setMediaList([])
+    }
+  }
 
   const checkIfLiked = async () => {
     if (!currentUser?.id) return
@@ -302,6 +326,34 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
 
             {/* Content */}
             <p className="mt-2 text-foreground leading-normal">{post.content}</p>
+
+            {/* Media Display */}
+            {mediaList && mediaList.length > 0 && (
+              <div className="mt-3 rounded-2xl overflow-hidden bg-muted">
+                <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${Math.min(mediaList.length, 2)}, 1fr)` }}>
+                  {mediaList.map((media: any) => (
+                    <div key={media.id} className="w-full h-40">
+                      {media.media_type === "video" ? (
+                        <video
+                          src={media.media_url}
+                          className="w-full h-full object-cover bg-black"
+                          controls
+                        />
+                      ) : (
+                        <img
+                          src={media.media_url}
+                          alt="Post media"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            console.warn("Failed to load image:", media.media_url)
+                          }}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Shared Post */}
             {sharedPost && (
