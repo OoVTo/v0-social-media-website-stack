@@ -75,16 +75,17 @@ export default function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
         const result = await uploadFile(file, path)
         if ("url" in result) {
           mediaUrls.push(result.url)
+          console.log("✅ Uploaded:", result.url)
         } else {
           // Log warning but don't fail the post
-          console.warn("Failed to upload media:", result.error)
+          console.warn("❌ Failed to upload", file.name, ":", result.error)
           uploadWarnings.push(file.name)
         }
       }
 
       // Show warning if some media failed to upload
       if (uploadWarnings.length > 0) {
-        console.warn(`Failed to upload ${uploadWarnings.length} file(s). Post will be created without these images.`)
+        console.warn(`⚠️ Failed to upload ${uploadWarnings.length} file(s). Post will be created without these images.`)
       }
 
       // Create post (with or without media)
