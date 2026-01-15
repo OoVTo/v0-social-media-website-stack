@@ -155,25 +155,36 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
   }
 
   const handleShare = async () => {
-    if (!shareText.trim()) return
+    if (!shareText.trim()) {
+      alert("Please add a comment to your quote post")
+      return
+    }
 
     try {
-      const { error } = await supabase.from("posts").insert([
+      const { data, error } = await supabase.from("posts").insert([
         {
           user_id: currentUser.id,
           content: shareText,
           shared_post_id: post.id,
-          media_urls: null,
+          media_urls: [],
         },
-      ])
+      ]).select()
 
-      if (!error) {
+      if (error) {
+        console.error("Error sharing post:", error)
+        alert(`Failed to share post: ${error.message}`)
+        return
+      }
+
+      if (data && data.length > 0) {
         setShareText("")
         setShowShareModal(false)
         onPostUpdated()
+        alert("Post shared successfully!")
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error sharing post:", error)
+      alert(`Failed to share post: ${error.message}`)
     }
   }
 
@@ -220,7 +231,7 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
   }
 
   return (
-    <div className="border-b border-border">
+    <div className="border-b border-border" id={`post-${post.id}`}>
       <div className="p-4 hover:bg-muted/50 transition">
         <div className="flex gap-4">
           {/* Avatar */}
@@ -285,34 +296,35 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
 
             {/* Shared Post */}
             {sharedPost && (
-              <div
-                onClick={() => window.location.href = `/home`}
-                className="mt-3 p-3 border border-border rounded-lg bg-muted/30 hover:bg-muted/50 transition cursor-pointer"
-              >
-                <div className="flex gap-2 items-start">
-                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 text-xs">
-                    {sharedPost.users?.username?.[0]?.toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <Link href={`/profile/${sharedPost.user_id}`} className="font-semibold text-sm hover:underline">
-                        {sharedPost.users?.username}
-                      </Link>
-                      <span className="text-muted-foreground text-xs">@{sharedPost.users?.username}</span>
+              <Link href={`#post-${sharedPost.id}`}>
+                <div
+                  className="mt-3 p-3 border border-border rounded-lg bg-muted/30 hover:bg-muted/50 transition cursor-pointer"
+                >
+                  <div className="flex gap-2 items-start">
+                    <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 text-xs">
+                      {sharedPost.users?.username?.[0]?.toUpperCase()}
                     </div>
-                    <p className="text-sm text-foreground mt-1 line-clamp-3">{sharedPost.content}</p>
-                    {sharedPost.media_urls && sharedPost.media_urls.length > 0 && (
-                      <div className="mt-2 rounded overflow-hidden bg-muted">
-                        <img
-                          src={sharedPost.media_urls[0] || "/placeholder.svg"}
-                          alt="Shared post media"
-                          className="w-full h-20 object-cover"
-                        />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-sm">
+                          {sharedPost.users?.username}
+                        </p>
+                        <span className="text-muted-foreground text-xs">@{sharedPost.users?.username}</span>
                       </div>
-                    )}
+                      <p className="text-sm text-foreground mt-1 line-clamp-3">{sharedPost.content}</p>
+                      {sharedPost.media_urls && sharedPost.media_urls.length > 0 && (
+                        <div className="mt-2 rounded overflow-hidden bg-muted">
+                          <img
+                            src={sharedPost.media_urls[0] || "/placeholder.svg"}
+                            alt="Shared post media"
+                            className="w-full h-20 object-cover"
+                          />
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
+              </Link>
             )}
 
             {/* Engagement Buttons */}
