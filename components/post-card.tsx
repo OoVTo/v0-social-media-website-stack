@@ -22,8 +22,14 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
   const [shareText, setShareText] = useState("")
   const [sharedPost, setSharedPost] = useState<any>(null)
   const [isLiking, setIsLiking] = useState(false)
+  const [zoomedMedia, setZoomedMedia] = useState<string | null>(null)
   const supabase = createClient()
   const isOwnPost = post.user_id === currentUser?.id
+
+  // Helper to detect if URL is a video
+  const isVideo = (url: string) => {
+    return /\.(mp4|webm|ogg|mov)$/i.test(url)
+  }
 
   useEffect(() => {
     // Check if user has liked this post
@@ -265,14 +271,27 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
             {/* Media */}
             {post.media_urls && post.media_urls.length > 0 && (
               <div className="mt-3 rounded-2xl overflow-hidden bg-muted">
-                <div className="grid grid-cols-2 gap-1">
+                <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${Math.min(post.media_urls.length, 2)}, 1fr)` }}>
                   {post.media_urls.slice(0, 4).map((url: string, idx: number) => (
-                    <img
+                    <div
                       key={idx}
-                      src={url || "/placeholder.svg"}
-                      alt="Post media"
-                      className="w-full h-40 object-cover"
-                    />
+                      onClick={() => setZoomedMedia(url)}
+                      className="cursor-pointer hover:opacity-80 transition"
+                    >
+                      {isVideo(url) ? (
+                        <video
+                          src={url}
+                          className="w-full h-40 object-cover bg-black"
+                          controls
+                        />
+                      ) : (
+                        <img
+                          src={url || "/placeholder.svg"}
+                          alt="Post media"
+                          className="w-full h-40 object-cover"
+                        />
+                      )}
+                    </div>
                   ))}
                 </div>
               </div>
@@ -455,6 +474,43 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
                 Quote Post
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Zoom Modal for Media */}
+      {zoomedMedia && (
+        <div
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+          onClick={() => setZoomedMedia(null)}
+        >
+          <div
+            className="relative max-w-4xl max-h-[90vh] flex items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {isVideo(zoomedMedia) ? (
+              <video
+                src={zoomedMedia}
+                className="max-w-full max-h-[90vh] object-contain rounded-lg"
+                controls
+                autoPlay
+              />
+            ) : (
+              <img
+                src={zoomedMedia}
+                alt="Zoomed media"
+                className="max-w-full max-h-[90vh] object-contain rounded-lg"
+              />
+            )}
+            <button
+              onClick={() => setZoomedMedia(null)}
+              className="absolute top-4 right-4 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition"
+            >
+              <X size={24} />
+            </button>
+            <p className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white/70 text-sm">
+              Click outside to close
+            </p>
           </div>
         </div>
       )}
