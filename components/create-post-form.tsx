@@ -16,9 +16,18 @@ export default function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
   const [media, setMedia] = useState<File[]>([])
   const [loading, setLoading] = useState(false)
   const [preview, setPreview] = useState<string[]>([])
+  const [error, setError] = useState("")
   const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
-  const user = JSON.parse(sessionStorage.getItem("user") || "{}")
+
+  const getUser = () => {
+    try {
+      const userStr = sessionStorage.getItem("user")
+      return userStr ? JSON.parse(userStr) : null
+    } catch {
+      return null
+    }
+  }
 
   const handleMediaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
@@ -41,7 +50,18 @@ export default function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!content.trim()) return
+    setError("")
+    
+    if (!content.trim()) {
+      setError("Please write something to post")
+      return
+    }
+
+    const user = getUser()
+    if (!user || !user.id) {
+      setError("You must be logged in to post")
+      return
+    }
 
     setLoading(true)
 
@@ -54,26 +74,31 @@ export default function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
         const result = await uploadFile(file, path)
         if ("url" in result) {
           mediaUrls.push(result.url)
+        } else {
+          throw new Error(result.error || "Failed to upload media")
         }
       }
 
       // Create post
-      const { error } = await supabase.from("posts").insert([
+      const { error: insertError } = await supabase.from("posts").insert([
         {
           user_id: user.id,
           content,
-          media_urls: mediaUrls,
+          media_urls: mediaUrls.length > 0 ? mediaUrls : null,
         },
       ])
 
-      if (error) throw error
+      if (insertError) throw insertError
 
       setContent("")
       setMedia([])
       setPreview([])
+      setError("")
       onPostCreated()
-    } catch (error) {
+    } catch (error: any) {
+      const errorMessage = error?.message || "Failed to create post. Please try again."
       console.error("Error creating post:", error)
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -81,6 +106,11 @@ export default function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="border border-border rounded-lg p-4 bg-card">
+      {error && (
+        <div className="mb-4 p-3 bg-destructive/10 border border-destructive text-destructive rounded-lg text-sm">
+          {error}
+        </div>
+      )}
       <textarea
         value={content}
         onChange={(e) => setContent(e.target.value)}

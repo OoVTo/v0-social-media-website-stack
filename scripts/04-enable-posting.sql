@@ -1,11 +1,4 @@
--- Add INSERT policy for users table to allow registration
--- This policy allows anyone (including unauthenticated users) to insert a new row into the users table
-CREATE POLICY "Users can create their own account"
-  ON users
-  FOR INSERT
-  WITH CHECK (true);
-
--- RLS Policies for posts table
+-- RLS Policies for posts table - Enable user posting
 -- Enable RLS on posts table
 ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
 
@@ -108,3 +101,9 @@ CREATE POLICY "Users are viewable by everyone"
   ON users
   FOR SELECT
   USING (true);
+
+CREATE POLICY "Users can update their own profile"
+  ON users
+  FOR UPDATE
+  USING (auth.uid()::text = id::text)
+  WITH CHECK (auth.uid()::text = id::text);
