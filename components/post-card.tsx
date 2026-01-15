@@ -72,22 +72,6 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
     }
   }
 
-  const checkIfLiked = async () => {
-    if (!currentUser?.id) return
-    try {
-      const { data } = await supabase
-        .from("likes")
-        .select("id")
-        .eq("post_id", post.id)
-        .eq("user_id", currentUser.id)
-        .single()
-
-      setIsLiked(!!data)
-    } catch {
-      setIsLiked(false)
-    }
-  }
-
   const fetchReplies = async () => {
     try {
       const { data, error } = await supabase
