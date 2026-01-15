@@ -283,32 +283,37 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
             {/* Content */}
             <p className="mt-2 text-foreground leading-normal">{post.content}</p>
 
-            {/* Media */}
-            {post.media_urls && post.media_urls.length > 0 && (
-              <div className="mt-3 rounded-2xl overflow-hidden bg-muted">
-                <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${Math.min(post.media_urls.length, 2)}, 1fr)` }}>
-                  {post.media_urls.slice(0, 4).map((url: string, idx: number) => (
+            {/* Media Thumbnails */}
+            {post.media_urls && Array.isArray(post.media_urls) && post.media_urls.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {post.media_urls.map((url: string, idx: number) => {
+                  if (!url || typeof url !== 'string') return null
+                  
+                  return (
                     <div
                       key={idx}
                       onClick={() => setZoomedMedia(url)}
-                      className="cursor-pointer hover:opacity-80 transition"
+                      className="cursor-pointer hover:opacity-80 transition rounded overflow-hidden"
                     >
                       {isVideo(url) ? (
                         <video
                           src={url}
-                          className="w-full h-40 object-cover bg-black"
-                          controls
+                          className="h-32 w-32 object-cover bg-black"
                         />
                       ) : (
                         <img
-                          src={url || "/placeholder.svg"}
-                          alt="Post media"
-                          className="w-full h-40 object-cover"
+                          src={url}
+                          alt="Media"
+                          className="h-32 w-32 object-cover"
+                          onError={(e) => {
+                            console.warn("Failed to load image:", url)
+                            e.currentTarget.src = "/placeholder.svg"
+                          }}
                         />
                       )}
                     </div>
-                  ))}
-                </div>
+                  )
+                })}
               </div>
             )}
 
