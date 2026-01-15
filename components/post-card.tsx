@@ -234,9 +234,24 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
   }
 
   const handleDelete = async () => {
-    const { error } = await supabase.from("posts").delete().eq("id", post.id)
-    if (!error) {
-      onPostUpdated()
+    if (!window.confirm("Are you sure you want to delete this post?")) {
+      return
+    }
+
+    try {
+      console.log("🗑️ Deleting post:", post.id)
+      const { error } = await supabase.from("posts").delete().eq("id", post.id)
+      
+      if (error) {
+        console.error("❌ Delete failed:", error.message)
+        alert("Failed to delete post: " + error.message)
+      } else {
+        console.log("✅ Post deleted successfully")
+        onPostUpdated()
+      }
+    } catch (error) {
+      console.error("❌ Unexpected error deleting post:", error)
+      alert("Failed to delete post")
     }
   }
 
