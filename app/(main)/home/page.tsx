@@ -23,22 +23,30 @@ export default function HomePage() {
       setLoading(true)
       const supabase = createClient()
 
-      // Fetch latest posts with user info and engagement counts
+      // Fetch latest posts with user info
       const { data, error } = await supabase
         .from("posts")
         .select(
           `
-          *,
-          users:user_id (id, username, profile_picture_url),
-          likes:likes(count),
-          shares:shares(count)
+          id,
+          content,
+          media_urls,
+          user_id,
+          shared_post_id,
+          created_at,
+          updated_at,
+          users:user_id (id, username, profile_picture_url)
         `,
         )
         .order("created_at", { ascending: false })
         .limit(20)
 
-      if (error) throw error
+      if (error) {
+        console.error("❌ Query error:", error)
+        throw error
+      }
 
+      console.log("✅ Posts loaded:", data?.length || 0, "posts")
       setPosts(data || [])
     } catch (error) {
       console.error("Error fetching posts:", error)
