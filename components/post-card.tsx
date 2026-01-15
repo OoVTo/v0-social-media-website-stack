@@ -111,49 +111,60 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
   }
 
   const handleLike = async () => {
-    if (isLiking || !currentUser?.id) return
+    // Prevent multiple clicks while processing
+    if (isLiking || !currentUser?.id) {
+      console.warn("⚠️ Like already in progress or user not logged in")
+      return
+    }
+    
+    setIsLiking(true)
     
     try {
-      setIsLiking(true)
-      const newIsLiked = !isLiked
+      const willLike = !isLiked
       
-      if (newIsLiked) {
-        // Add like
-        const { error } = await supabase.from("likes").insert([
-          { post_id: post.id, user_id: currentUser.id }
-        ])
+      if (willLike) {
+        // Optimistic update
+        setIsLiked(true)
+        setLikeCount(likeCount + 1)
         
-        if (!error) {
-          setIsLiked(true)
-          setLikeCount(likeCount + 1)
-          console.log("✅ Like added")
+        // Add to database
+        const { error } = await supabase.from("likes").insert({
+          post_id: post.id,
+          user_id: currentUser.id,
+        })
+        
+        if (error) {
+          console.error("❌ Failed to add like:", error.message)
+          // Revert on error
+          setIsLiked(false)
+          setLikeCount(Math.max(0, likeCount - 1))
         } else {
-          console.warn("⚠️ Error adding like:", error.message)
-          // Still update UI optimistically
-          setIsLiked(true)
-          setLikeCount(likeCount + 1)
+          console.log("✅ Like added")
         }
       } else {
-        // Remove like
+        // Optimistic update
+        setIsLiked(false)
+        setLikeCount(Math.max(0, likeCount - 1))
+        
+        // Remove from database
         const { error } = await supabase
           .from("likes")
           .delete()
           .eq("post_id", post.id)
           .eq("user_id", currentUser.id)
         
-        if (!error) {
-          setIsLiked(false)
-          setLikeCount(Math.max(0, likeCount - 1))
-          console.log("✅ Like removed")
+        if (error) {
+          console.error("❌ Failed to remove like:", error.message)
+          // Revert on error
+          setIsLiked(true)
+          setLikeCount(likeCount + 1)
         } else {
-          console.warn("⚠️ Error removing like:", error.message)
-          // Still update UI optimistically
-          setIsLiked(false)
-          setLikeCount(Math.max(0, likeCount - 1))
+          console.log("✅ Like removed")
         }
       }
     } catch (error) {
-      console.warn("⚠️ Error toggling like:", error)
+      console.error("❌ Unexpected error in handleLike:", error)
+      // Make sure we clear the loading state
     } finally {
       setIsLiking(false)
     }
