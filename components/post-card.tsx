@@ -46,7 +46,7 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
 
   const fetchReplies = async () => {
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("comments")
         .select(
           `
@@ -57,9 +57,15 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
         .eq("post_id", post.id)
         .order("created_at", { ascending: true })
 
-      setReplies(data || [])
+      if (!error && data) {
+        setReplies(data)
+      } else {
+        // Comments table may not exist yet
+        setReplies([])
+      }
     } catch (error) {
       console.error("Error fetching replies:", error)
+      setReplies([])
     }
   }
 
@@ -121,6 +127,8 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
       if (!error) {
         setReplyText("")
         await fetchReplies()
+      } else {
+        console.error("Error posting reply:", error)
       }
     } catch (error) {
       console.error("Error posting reply:", error)

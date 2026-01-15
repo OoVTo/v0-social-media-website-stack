@@ -31,11 +31,9 @@ export default function HomePage() {
           *,
           users:user_id (id, username, profile_picture_url),
           likes:likes(count),
-          shares:shares(count),
-          comments:comments(count)
+          shares:shares(count)
         `,
         )
-        .is("shared_post_id", null)
         .order("created_at", { ascending: false })
         .limit(20)
 
