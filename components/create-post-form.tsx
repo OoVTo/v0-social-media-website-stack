@@ -93,7 +93,7 @@ export default function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
         {
           user_id: user.id,
           content,
-          media_urls: mediaUrls.length > 0 ? mediaUrls : null,
+          media_urls: mediaUrls.length > 0 ? mediaUrls : [],
         },
       ])
 

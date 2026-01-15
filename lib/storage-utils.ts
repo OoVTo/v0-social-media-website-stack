@@ -7,10 +7,13 @@ export async function uploadFile(
   try {
     const token = process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN;
     
+    console.log("🔍 Blob token exists:", !!token);
+    console.log("📁 Uploading file:", file.name, "to path:", path);
+
     if (!token) {
-      return {
-        error: "Blob token not configured",
-      };
+      const error = "Blob token not configured. Set BLOB_READ_WRITE_TOKEN in Vercel environment variables.";
+      console.error("❌ " + error);
+      return { error };
     }
 
     const blob = await put(path, file, {
@@ -18,9 +21,11 @@ export async function uploadFile(
       token: token,
     });
 
+    console.log("✅ Upload successful:", blob.url);
     return { url: blob.url };
   } catch (error) {
-    console.error("Upload error:", error);
-    return { error: "Failed to upload file" };
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error("❌ Upload error:", errorMsg);
+    return { error: errorMsg };
   }
 }
